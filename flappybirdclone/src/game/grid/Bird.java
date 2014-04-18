@@ -16,6 +16,9 @@ import gdxl.graphics2d.Sprite;
 public class Bird extends Entity<Grid> {
 	public final Sprite bird = Sprite.load("bird-orange.png");
 	public final float size = 34.0f / 288.0f;
+	
+	public final float collisionWidth = size;
+	public final float collisionHeight = size * bird.length;
 
 	public final Sprite wing = Sprite.load("bird-wing.png");
 	public final float wingX = -10.0f / 34.0f;
@@ -24,6 +27,7 @@ public class Bird extends Entity<Grid> {
 	
 	final Animation.Loop wingAnim;
 	
+	public final Audio.Sound hitSound = Sound.load("sounds/hit.ogg");
 	public final Audio.Sound thrustSound = Sound.load("sounds/wing.ogg");
 	public final Audio.Sound fallSound = Sound.load("sounds/swooshing.ogg");
 	public final float fallSoundRotate = +20.0f;
@@ -37,6 +41,8 @@ public class Bird extends Entity<Grid> {
 	float rotateRise = -30.0f;
 	float rotateDropSpeed = 140.0f / 25.0f; 
 	float rotateDrop = +60.0f;
+	float rotateHitSpeed = 900.0f / 25.0f;
+	float rotateHit = +90.0f;
 	
 	float rotate1 = 0.0f;
 	float rotate2 = 0.0f;
@@ -49,6 +55,7 @@ public class Bird extends Entity<Grid> {
 	public float y1 = 0.0f;
 	public float y2 = 0.0f;
 	
+	public boolean isHit = false;
 	public boolean isSuspended = false;
 	
 	public void suspend(float suspendX, float suspendY) {
@@ -69,6 +76,16 @@ public class Bird extends Entity<Grid> {
 		thrustSound.play();
 	}
 	
+	public void hit() {
+		if(isHit)
+			return;		// already hit
+		isHit = true;
+		if(ySpeed > 0.0f)
+			ySpeed = 0.0f;
+		hitSound.play();
+		
+	}
+	
 	@Override
 	protected void process(Grid v, float renderTime) {
 		y2 = y1;
@@ -80,13 +97,18 @@ public class Bird extends Entity<Grid> {
 		y1 += ySpeed;
 		
 		// Add hover
-		y1 -= yHover;
-		yHover = yHoverGraph.generate(renderTime);
-		y1 += yHover;
+		if(!isHit) {
+			y1 -= yHover;
+			yHover = yHoverGraph.generate(renderTime);
+			y1 += yHover;
+		}
 		
 		float minY = v.map.ground.height + (size / 2.0f);
-		if(y1 < minY)
+		if(y1 < minY) {
 			y1 = minY;
+			// Hit the ground
+			hit();
+		}
 	
 		if(ySpeed > 0.0f) {
 			rotate1 -= rotateRiseSpeed;
@@ -98,9 +120,17 @@ public class Bird extends Entity<Grid> {
 				fallSound.play();
 				fallSoundPlayed = true;
 			}
-			rotate1 += rotateDropSpeed;
-			if(rotate1 > rotateDrop)
-				rotate1 = rotateDrop;
+			if(isHit) {
+				rotate1 += rotateHitSpeed;
+				if(rotate1 > rotateHit)
+					rotate1 = rotateHit;
+			}
+			else {
+				rotate1 += rotateDropSpeed;
+				if(rotate1 > rotateDrop) {
+					rotate1 = rotateDrop;
+				}
+			}
 		}
 	}
 	
@@ -122,7 +152,8 @@ public class Bird extends Entity<Grid> {
 		m.translate(wingX, wingY, 0.0f);
 		m.scale(wingSize, wingSize, wingSize);
 		// Animate wing
-		wingAnim.updateAndApply(wing, getRenderDeltaTime());
+		if(!isHit)
+			wingAnim.updateAndApply(wing, getRenderDeltaTime());
 		wing.render();
 		
 		Matrices.pop();

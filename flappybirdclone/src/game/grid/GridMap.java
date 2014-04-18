@@ -1,5 +1,7 @@
 package game.grid;
 
+import java.util.ArrayList;
+
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Matrix4;
@@ -22,13 +24,22 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 	public final float birdXOffset = -0.2f;
 	public final Bird bird = new Bird();
 	
-	
 	public final Camera gameCamera;
 	public float cameraX1 = 0.5f;
 	public float cameraX2 = 0.5f;
 	public float cameraX = 0.5f;
 	
 	public final float speed = 0.4f / 25.0f;
+	
+	public final ArrayList<Opening> openings = new ArrayList<Opening>();
+	public final float mapGenBufferX = 0.5f;
+	float mapEndX = 1.0f;
+	Stage stage = new Stage();
+	float direction = +1.0f;		// Up
+	int directionOpenings = 0;
+	int maxDirectionOpenings = 0;
+	int emptySpaces = 0;
+	float openingY = (float)Math.random() * Globals.LENGTH;
 	
 	public GridMap() {
 		// Create game camera
@@ -48,7 +59,102 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 		// Timestep
 		cameraX2 = cameraX1;
 		// Add speed
-		cameraX1 += speed;
+		if(!bird.isHit)
+			cameraX1 += speed;
+		
+		// Process map generation
+		if(bird.isSuspended)
+			mapEndX = cameraX1 + 0.5f;
+		else while(mapEndX < (cameraX1 + 0.5f + mapGenBufferX)) {
+			// Fill up empty spaces first
+			if(emptySpaces < stage.emptySpaces) {
+				emptySpaces++;
+				mapEndX += stage.pipeSize;
+				continue;
+			}
+			emptySpaces = 0;
+			
+			// Else need to create pipe now
+			// Check if need to change direction
+			if(directionOpenings >= maxDirectionOpenings) {
+				// Change direction
+				direction *= -1.0f;
+				directionOpenings = 0;
+				maxDirectionOpenings = stage.directionOpenings.generateInt();
+			}
+			
+			// Generate opening parameters
+			float x = mapEndX + (stage.pipeSize / 2.0f);
+			float openingHeight = stage.openingHeight.generate();
+			float y = openingY + (stage.directionOpeningVariance.generate() * direction);
+			// Limit current openingY with current stage parameters
+			float openingMinY = ground.height + stage.openingMinGroundDistance + (openingHeight / 2.0f);
+			float openingMaxY = gameCamera.viewportHeight - stage.openingMinSkyDistance - (openingHeight / 2.0f);
+			if(y < openingMinY)
+				y = openingMinY;
+			if(y > openingMaxY)
+				y = openingMaxY;
+			openingY = y;
+			directionOpenings++;
+			
+			// Create opening
+			Opening o = new Opening(stage, x, y, openingHeight);
+			o.attach(pipesGroup);
+			openings.add(o);
+			
+			// Move one step
+			mapEndX += stage.pipeSize;
+		}
+		
+		// Remove openins passed to the left of the screen
+		float mapStartX = cameraX1 - 0.5f - mapGenBufferX;
+		int actual = 0;
+		for(int c = 0; c < openings.size(); c++) {
+			Opening o = openings.get(c);
+			// Check if this opening is visible
+			if((o.x + (o.stage.pipeSize / 2.0f)) < mapStartX) {
+				// Opening out of range, remove it
+				o.detach();
+				continue;
+			}
+			// Else keep it
+			openings.set(actual, o);
+			actual++;
+		}
+		// Trim arraylist
+		while(openings.size() > actual)
+			openings.remove(openings.size() - 1);
+		
+		// Process bird, check for collisions
+		if(bird.isHit)
+			return;
+		
+		float birdLeft = bird.x - (bird.collisionWidth / 2.0f);
+		float birdRight = bird.x + (bird.collisionWidth / 2.0f);
+		float birdTop = bird.y1 + (bird.collisionHeight / 2.0f); 
+		float birdBottom = bird.y1 - (bird.collisionHeight / 2.0f); 
+		for(int c = 0; c < openings.size(); c++) {
+			Opening o = openings.get(c);
+			
+			float openingLeft = o.x - (o.stage.pipeSize / 2.0f);
+			float openingRight = o.x + (o.stage.pipeSize / 2.0f);
+			if(openingLeft > birdRight)
+				continue;		// nowhere near this opening
+			else if(openingRight < birdLeft) {
+				// Bird passed this opening, collect points if still available
+				// TODO
+				continue;
+			}
+			// Else within range, check if right inside the opening 				
+			float openingTop = o.y + (o.height / 2.0f);
+			float openingBottom = o.y - (o.height / 2.0f);
+			if(birdTop < openingTop && birdBottom > openingBottom)
+				continue;		// right inside the opening
+			
+			// Else collision
+			bird.hit();
+			return;
+		}
 	}
 	
 	@Override
@@ -89,8 +195,8 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 		v.attachTouchable(this);
 		
 		// Reset bird
-		bird.suspend(cameraX + birdXOffset, birdStartY);
 		bird.attach(this);
+		bird.suspend(cameraX + birdXOffset, birdStartY);
 	}
 
 	@Override
@@ -105,7 +211,8 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 		
 		if(bird.isSuspended)
 			bird.isSuspended = false;
-		bird.thrust();
+		if(!bird.isHit)
+			bird.thrust();
 		return true;
 	}
 
