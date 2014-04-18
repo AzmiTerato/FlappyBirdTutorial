@@ -9,6 +9,11 @@ public class Grid extends Universe2D {
 	
 	public GridMap map;
 	
+	public IngameUI ui;
+	public EndgameUI endgameUI;
+
+	
+	
 	public Grid() {
 		super(Globals.TIMESTEP, Globals.INPUT_DEPTH, Globals.LENGTH);
 		

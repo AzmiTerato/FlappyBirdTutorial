@@ -12,6 +12,8 @@ public class Opening extends Entity<Grid> {
 	public final float y;
 	public final float height;
 	
+	public boolean scoreCollected = false;
+	
 	public Opening(Stage stage, float x, float y, float height) {
 		this.stage = stage;
 		this.x = x;

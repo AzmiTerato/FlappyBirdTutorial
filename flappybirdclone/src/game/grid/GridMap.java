@@ -2,11 +2,15 @@ package game.grid;
 
 import java.util.ArrayList;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Matrix4;
 import gdxl.Entity;
 import gdxl.Touchable;
+import gdxl.audio.Audio;
+import gdxl.audio.Sound;
 import gdxl.graphics2d.Matrices;
 import gdxl.graphics2d.Sprite;
 
@@ -24,6 +28,10 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 	public final float birdXOffset = -0.2f;
 	public final Bird bird = new Bird();
 	
+	// UI
+	public final float tEndgameUIAppearTime = 1.0f;
+	float tEndgameUIScheduled = Float.MAX_VALUE;
+	
 	public final Camera gameCamera;
 	public float cameraX1 = 0.5f;
 	public float cameraX2 = 0.5f;
@@ -40,6 +48,25 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 	int maxDirectionOpenings = 0;
 	int emptySpaces = 0;
 	float openingY = (float)Math.random() * Globals.LENGTH;
+	
+	// Score
+	public final Audio.Sound scoreSound = Sound.load("sounds/point.ogg");
+	int score = 0;
+	
+	public int getScore() {
+		return score;
+	}
+	
+	public void collectScore(Grid v) {
+		score++;
+		scoreSound.play();
+		v.ui.setScore(score);
+	}
+	
+	public void start(Grid v) {
+		v.ui.showTutorial();
+		bird.attach(this);
+	}
 	
 	public GridMap() {
 		// Create game camera
@@ -126,9 +153,21 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 			openings.remove(openings.size() - 1);
 		
 		// Process bird, check for collisions
-		if(bird.isHit)
-			return;
-		
+		if(bird.isHit) {
+			// Bird already hit, no need to check collisions
+			// But check if endgame is shown
+			if(!v.endgameUI.isAttached()) {
+				if(tEndgameUIScheduled == Float.MAX_VALUE) {
+					if(bird.isStatic())
+						tEndgameUIScheduled = renderTime + tEndgameUIAppearTime;
+				}
+				else if(renderTime > tEndgameUIScheduled) {
+					v.endgameUI.attach(v);
+				}
+			}
+			v.ui.showGameOver();
+			return;		
+		}
 		float birdLeft = bird.x - (bird.collisionWidth / 2.0f);
 		float birdRight = bird.x + (bird.collisionWidth / 2.0f);
 		float birdTop = bird.y1 + (bird.collisionHeight / 2.0f); 
@@ -142,7 +181,10 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 				continue;		// nowhere near this opening
 			else if(openingRight < birdLeft) {
 				// Bird passed this opening, collect points if still available
-				// TODO
+				if(!o.scoreCollected) {
+					o.scoreCollected = true;
+					collectScore(v);
+				}
 				continue;
 			}
 			// Else within range, check if right inside the opening 				
@@ -194,8 +236,12 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 		// Receive input
 		v.attachTouchable(this);
 		
+		// Reset ingame ui
+		v.ui.reset();
+		v.ui.showMainMenu();
+		v.endgameUI.detachWithAnim();
+		
 		// Reset bird
-		bird.attach(this);
 		bird.suspend(cameraX + birdXOffset, birdStartY);
 	}
 
@@ -209,8 +255,10 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 		if(!bird.isAttached())
 			return false;		// not yet started
 		
-		if(bird.isSuspended)
+		if(bird.isSuspended) {
 			bird.isSuspended = false;
+			v.ui.showGameplay();
+		}
 		if(!bird.isHit)
 			bird.thrust();
 		return true;
@@ -233,6 +281,10 @@ public class GridMap extends Entity<Grid> implements Touchable<Grid> {
 
 	@Override
 	public boolean keyUp(int key, Grid v) {
+		if(key == Input.Keys.BACK) {
+			Gdx.app.exit();
+			return true;
+		}
 		return false;			// not tracked
 	}
 }

@@ -1,5 +1,6 @@
 package com.accurve.flappybirdclone;
 
+import game.gb.GBInterface;
 import game.grid.Globals;
 import game.grid.Grid;
 import game.grid.GridMap;
@@ -52,6 +53,11 @@ public class Game extends Sys {
 		
 		Grid grid = new Grid();
 		Globals.grid = grid;
+
+		grid.ui = GBInterface.createIngameUI();
+		grid.endgameUI = GBInterface.createEndgameUI();
+		
+		grid.ui.attach(grid);
 
 		grid.map = new GridMap();
 		grid.map.attach(grid.mapGroup);
