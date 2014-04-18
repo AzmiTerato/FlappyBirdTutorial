@@ -13,6 +13,7 @@ import gdxl.graphics2d.compressors.Mosaic;
 
 import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Application.ApplicationType;
 
 public class Game extends Sys {
 	static final String TAG = "Game";
@@ -23,12 +24,15 @@ public class Game extends Sys {
 	protected void created() {
 		// Initialize platform
 		// Configure external override
-		File.allowExternalOverride = true;	
-		File.externalOverridePath = "flappybirdclone/";
-		// Show debug messages
-		Gdx.app.setLogLevel(Application.LOG_DEBUG);
-		// Configure compiled directory
-		File.optimizedCacheDir = File.openExternal("compiled");
+		if(Gdx.app.getType() == ApplicationType.Desktop) {
+			File.allowExternalOverride = true;	
+			File.externalOverridePath = "flappybirdclone/";
+			// Show debug messages
+			Gdx.app.setLogLevel(Application.LOG_DEBUG);
+			// Configure compiled directory
+			File.optimizedCacheDir = File.openExternal("compiled");
+		}
+
 		// Load compiled filesystem if exists
 		if(File.existsFS(configCompiledFS))
 			File.loadFS(configCompiledFS);
@@ -61,7 +65,9 @@ public class Game extends Sys {
 	@Override
 	protected void destroyed() {
 		// Recompile FS
-		File.expandAllFS();
-		File.saveFS(configCompiledFS);
+		if(Gdx.app.getType() == ApplicationType.Desktop) {
+			File.expandAllFS();
+			File.saveFS(configCompiledFS);
+		}
 	}
 }
