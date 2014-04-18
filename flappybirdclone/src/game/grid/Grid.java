@@ -7,6 +7,7 @@ public class Grid extends Universe2D {
 	
 	public Entity.Group mapGroup = new Entity.Group();
 	
+	public GridMap map;
 	
 	public Grid() {
 		super(Globals.TIMESTEP, Globals.INPUT_DEPTH, Globals.LENGTH);

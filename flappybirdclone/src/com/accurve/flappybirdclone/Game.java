@@ -2,6 +2,7 @@ package com.accurve.flappybirdclone;
 
 import game.grid.Globals;
 import game.grid.Grid;
+import game.grid.GridMap;
 import gdxl.File;
 import gdxl.Sys;
 import gdxl.graphics2d.Material;
@@ -47,6 +48,12 @@ public class Game extends Sys {
 		
 		Grid grid = new Grid();
 		Globals.grid = grid;
+
+		grid.map = new GridMap();
+		grid.map.attach(grid.mapGroup);
+		grid.mapGroup.attach(grid);
+		
+
 		
 		activate(Globals.grid);
 	}
