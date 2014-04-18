@@ -1,0 +1,1 @@
+import gdxl.File;import gdxl.materials.SimpleMaterial;import gdxl.graphics2d.Renderer;import com.badlogic.gdx.graphics.Texture.TextureFilter;SimpleMaterial.CompileConfig hints = new SimpleMaterial.CompileConfig();hints.target = Renderer.TARGET_SEQUENCE_SORTED;hints.minFilter = TextureFilter.Nearest;hints.magFilter = TextureFilter.Nearest;return hints;
